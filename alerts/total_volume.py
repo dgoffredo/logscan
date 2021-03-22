@@ -3,18 +3,25 @@
 
 import .alert
 
-# The first row returned is the total number of events (HTTP requests) within
-# the last "?" seconds. The second row returned is the greatest Unix time so
-# far.
-# Note that this query implicitly assumes that the table "Events" is not empty.
+
 _sql_template =  """
-select count(*)
-from Events
-where unix_time >= (select max(unix_time) from Events) - {}
+-- the timestamp at the beginning of the window
+select max(unix_time)
+    where unix_time <= (select max(unix_time) from Events) - {}
 
 union all
 
-select max(unix_time) from Events;
+-- the timestamp at the end of the window
+select max(unix_time) from Events
+
+union all
+
+-- total count of events (requests) within the window
+select count(*)
+from Events
+where unix_time >=
+    (select max(unix_time)
+     where unix_time <= (select max(unix_time) from Events) - {})
 """
 
 
@@ -31,16 +38,18 @@ class TotalVolume(alert.Alert):
         return self._sql
 
     def handle_query_result(self, rows):
-        (count,), (largest_unix_time,) = rows
+        (begin_time,), (end_time,), (count,) = rows
         threshold = self._volume_threshold
+        window_seconds = self._window_seconds
+        scaled_count = window_seconds / (end_time - begin_time) * count
         
-        if count <= threshold:
+        if scaled_count <= threshold:
             # It's not necessarily a recovery, but each time we are below the
             # threshold, we produce a message that says we recovered.  The
             # calling code will use the message only if we were previously
             # triggered.
-            recovery = f'total volume of requests recovered: fell below {threshold} ({count}) over the {self._window_seconds} seconds preceding Unix timestamp {largest_unix_time}'
+            recovery = f'total volume of requests alert recovered: fell below {threshold} ({scaled_count}) on average over the {window_seconds} seconds preceding Unix time {end_time}'
             return alert.Status(triggered=False, message=recovery)
         
-        message = f'total volume of requests exceeds limit of {threshold} ({count}) over the {self._window_seconds} seconds preceding Unix timestamp {largest_unix_time}'
+        message = f'total volume of requests alert triggered: exceeds limit of {threshold} ({scaled_count}) on average over the {window_seconds} seconds preceding Unix time {end_time}'
         return alert.Status(triggered=True, message=message)

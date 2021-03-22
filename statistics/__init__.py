@@ -9,3 +9,5 @@ statistics['remote_host_throughput'] = remote_host_throughput.RemoteHostThroughp
 
 from . import response_statuses
 statistics['response_statuses'] = response_statuses.ResponseStatuses
+
+from statistic import *

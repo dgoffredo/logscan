@@ -1,2 +1,3 @@
-print("hello, world!")
+# TODO (use command line interface)
 
+print("hello, world!")

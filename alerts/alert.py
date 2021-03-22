@@ -2,7 +2,7 @@
 
 
 import abc
-import typing
+from typing import List
 
 
 class Status:
@@ -17,7 +17,7 @@ class Alert(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def handle_query_result(self, rows: typing.List[tuple]) -> Status:
+    def handle_query_result(self, rows: List[tuple]) -> Status:
         pass
     
     @abc.abstractmethod
