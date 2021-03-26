@@ -52,6 +52,7 @@ def analyze_log(input_file_object, use_json, show_statistics, alert_volume_thres
     for row in reader:
         remote_host, rfc931, authuser, unix_time, request, response_status, response_bytes = row
         ev = event.Event(remote_host, int(unix_time), request, int(response_status), int(response_bytes))
+        # sys.stdout.write('.') # useful when debugging
         handle_event(ev)
 
 

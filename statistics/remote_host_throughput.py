@@ -3,7 +3,6 @@
 
 from .statistic import Statistic
 
-# TODO: give each alert/statistic a view of only its window?
 
 class RemoteHostThroughput(Statistic):
     def period_seconds(self):

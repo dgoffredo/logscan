@@ -52,7 +52,7 @@ class Monitor:
             if status.triggered != state.triggered:
                 state.triggered = status.triggered
                 self.on_notice(notice.Alert(
-                        unix_time=newest,
+                        unix_time=ev.unix_time,
                         name=state.name,
                         is_triggered=state.triggered,
                         message=status.message))
@@ -67,7 +67,7 @@ class Monitor:
 
             state.last_run_unix_time = newest
             self.on_notice(notice.Table(
-                    unix_time=newest,
+                    unix_time=ev.unix_time,
                     title=f'{state.statistic.title()} (last {period} seconds)',
                     column_names=state.statistic.column_names(),
                     rows=list(db.execute(state.statistic.sql_query()))))

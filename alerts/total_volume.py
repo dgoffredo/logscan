@@ -46,8 +46,8 @@ class TotalVolume(alert.Alert):
         per_second = count / seconds
         
         if per_second <= threshold:
-            message = f'total volume of requests was at or below {threshold} per second ({per_second:.2f}) on average over the {seconds} seconds preceding Unix time {end_time}'
+            message = f'total volume of requests was at or below {threshold} per second ({per_second:.2f} per second, {count} total) on average over the {seconds} seconds preceding Unix time {end_time}'
             return alert.Status(triggered=False, message=message)
         
-        message = f'total volume of requests exceeded limit of {threshold} per second ({per_second:.2f}) on average over the {seconds} seconds preceding Unix time {end_time}'
+        message = f'total volume of requests exceeded limit of {threshold} per second ({per_second:.2f} per second, {count} total) on average over the {seconds} seconds preceding Unix time {end_time}'
         return alert.Status(triggered=True, message=message)
