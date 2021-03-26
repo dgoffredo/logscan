@@ -44,5 +44,11 @@ class Table:
 
 
 def to_json(notice):
-    # e.g. {"Alert": {"name": "foo", "is_triggered": true, "message": "AHH"}}
-    return json.dumps({type(notice).__name__: dataclasses.asdict(notice)})
+    # e.g. {"unix_time": 12345678 ,"Alert": {"name": "foo", "is_triggered": true, "message": "AHH"}}
+    return json.dumps({
+        'unix_time': notice.unix_time,
+        type(notice).__name__: {
+            name: value for name, value in dataclasses.asdict(notice).items() \
+            if name != 'unix_time'
+        }
+    })

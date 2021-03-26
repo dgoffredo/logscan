@@ -31,9 +31,9 @@ class Monitor:
         self.on_notice = on_notice
         self.db = setup_database()
         # Keep enough events (a window) to satisfy the alert/statistic having the widest window.
-        self.window_seconds = max(
+        self.window_seconds = max([
             *(state.alert.window_seconds() for state in self.alerts),
-            *(state.statistic.period_seconds() for state in self.statistics))
+            *(state.statistic.period_seconds() for state in self.statistics)])
 
     def handle_event(self, ev: event.Event):
         db = self.db
@@ -68,7 +68,7 @@ class Monitor:
             state.last_run_unix_time = newest
             self.on_notice(notice.Table(
                     unix_time=newest,
-                    title=state.statistic.title(),
+                    title=f'{state.statistic.title()} (last {period} seconds)',
                     column_names=state.statistic.column_names(),
                     rows=list(db.execute(state.statistic.sql_query()))))
 
