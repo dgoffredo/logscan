@@ -8,38 +8,41 @@ programmatic consumption, while pretty is intended for human eyeballs.
 """
 
 
+import dataclasses
 import json
+from typing import List
 from tabulate import tabulate
 
 
-def alert(name, is_triggered, message):
-    return {
-        'alert': {
-            'name': name,
-            'is_triggered': is_triggered,
-            'message': message
-        }
-    }
+@dataclasses.dataclass
+class Alert:
+    unix_time: int
+    name: str
+    is_triggered: bool
+    message: str
+
+    def to_pretty(self):
+        buzzword = 'TRIGGERED' if self.is_triggered else 'RECOVERED'
+        return f'@{self.unix_time} ALERT {self.name} {buzzword}: {self.message}'
+
+    def to_json(self):
+        return to_json(self)
 
 
-def table(title, column_names, rows):
-    return {
-        'table': {
-            'title': title,
-            'column_names': column_names,
-            'rows': rows
-        }
-    }
+@dataclasses.dataclass
+class Table:
+    unix_time: int
+    title: str
+    column_names: List[str]
+    rows: List[tuple]
 
+    def to_pretty(self):
+        return f'@{self.unix_time}\n{self.title}\n' + tabulate(self.rows, self.column_names, tablefmt="fancy_grid")
 
-def to_pretty(notice):
-    if 'alert' in notice:
-        return 'TODO: pretty-format notices' # TODO
-    
-    assert 'table' in notice
-    table = notice['table']
-    return table['title'] + '\n' + tabulate(table['rows'], table['column_names'], tablefmt="fancy_grid")
+    def to_json(self):
+        return to_json(self)
 
 
 def to_json(notice):
-    return json.dumps(notice)
+    # e.g. {"Alert": {"name": "foo", "is_triggered": true, "message": "AHH"}}
+    return json.dumps({type(notice).__name__: dataclasses.asdict(notice)})

@@ -1,12 +1,14 @@
 """monitor log events"""
 
 
-import alerts
-import event
-import statistics
 import dataclasses
 import sqlite3
 from typing import Optional
+
+import alerts
+import event
+import notice
+import statistics
 
 
 @dataclasses.dataclass
@@ -18,7 +20,6 @@ class AlertState:
 
 @dataclasses.dataclass
 class StatisticState:
-    name: str
     statistic: statistics.Statistic
     last_run_unix_time: Optional[int]
 
@@ -26,7 +27,7 @@ class StatisticState:
 class Monitor:
     def __init__(self, alerts, statistics, on_notice):
         self.alerts = [AlertState(name, alert, triggered=False) for name, alert in alerts.items()]
-        self.statistics = [StatisticState(name, statistic, last_run_unix_time=None) for name, statistic in statistics.items()]
+        self.statistics = [StatisticState(statistic, last_run_unix_time=None) for statistic in statistics.values()]
         self.on_notice = on_notice
         self.db = setup_database()
         # Keep enough events (a window) to satisfy the alert/statistic having the widest window.
@@ -34,30 +35,56 @@ class Monitor:
             *(state.alert.window_seconds() for state in self.alerts),
             *(state.statistic.period_seconds() for state in self.statistics))
 
-    def handle_event(self, event: event.Event):
-        insert_event(self.db, event)
+    def handle_event(self, ev: event.Event):
+        db = self.db
+        insert_event(db, ev)
+        delete_old_events(db, self.window_seconds)
+        oldest, newest = min_max_unix_times(db)
+        horizon_seconds = newest - oldest
 
         for state in self.alerts:
-            pass # TODO
+            alert = state.alert
+            if alert.window_seconds() > horizon_seconds:
+                continue
+            
+            rows = list(db.execute(alert.sql_query()))
+            status = alert.handle_query_result(rows)
+            if status.triggered != state.triggered:
+                state.triggered = status.triggered
+                self.on_notice(notice.Alert(
+                        unix_time=newest,
+                        name=state.name,
+                        is_triggered=state.triggered,
+                        message=status.message))
 
         for state in self.statistics:
-            pass # TODO
+            period = state.statistic.period_seconds()
+            if period > horizon_seconds:
+                continue
+            last_run = state.last_run_unix_time
+            if last_run is not None and newest - last_run < period:
+                continue
 
-        delete_old_events(self.db, self.window_seconds)
+            state.last_run_unix_time = newest
+            self.on_notice(notice.Table(
+                    unix_time=newest,
+                    title=state.statistic.title(),
+                    column_names=state.statistic.column_names(),
+                    rows=list(db.execute(state.statistic.sql_query()))))
 
 
 def setup_database():
     db = sqlite3.connect(':memory:')
     columns = ', '.join(event.field_names())
     db.execute(f"create table Events({columns});")
-    db.execute(f"create index Index_Events_unix_time on Events(unix_time)")
+    db.execute(f"create index Index_Events_unix_time on Events(unix_time);")
     return db
 
 
-def insert_event(db, event: event.Event):
+def insert_event(db, ev: event.Event):
     columns = ', '.join(event.field_names())
-    placeholders = ', '.join(('?' for _ in columns))
-    values = dataclasses.astuple(event)
+    placeholders = ', '.join(('?' for _ in event.field_names()))
+    values = dataclasses.astuple(ev)
     db.execute(f"insert into Events({columns}) values ({placeholders});", values)
 
 
@@ -70,6 +97,13 @@ def delete_old_events(db, window_seconds: float):
     # timestamp 7, then we'd delete the events with timestamp 6.
     db.execute("""
         delete from Events where unix_time <
-            (select max(unix_time)
-            where unix_time <= (select max(unix_time)) - ?);""",
-        window_seconds)
+            (select max(unix_time) from Events
+            where unix_time <= (select max(unix_time) from Events) - ?);""",
+        (window_seconds,))
+
+
+def min_max_unix_times(db):
+    (oldest, newest), = db.execute("""
+        select min(unix_time), max(unix_time) from Events;
+    """)
+    return oldest, newest

@@ -7,7 +7,7 @@ from typing import List
 
 class Status:
     def __init__(self, triggered: bool, message: str):
-        self.tiggered = triggered
+        self.triggered = triggered
         self.message = message
 
 
