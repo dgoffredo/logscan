@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# Create an executable python3 zip archive of this git repository.
+# The sole command line argument is the path to the output file.
+
+# exit with nonzero status if something goes wrong
+set -e
+
+repo=$(git rev-parse --show-toplevel)
+output=$1
+
+# Delete the output file if it already exists.  This is important for when the
+# output file is within this git repository.  We don't want to include it in
+# the zip archive.
+rm -f $output 2>/dev/null
+
+tmpdir=$(mktemp -d)
+
+python3 -m zipapp \
+    --compress \
+    --output=$tmpdir/logscan \
+    --python='/usr/bin/env python3' \
+    $repo
+
+mv $tmpdir/logscan $output
+rm -r $tmpdir
