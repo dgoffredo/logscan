@@ -78,6 +78,9 @@ def setup_database():
     columns = ', '.join(event.field_names())
     db.execute(f"create table Events({columns});")
     db.execute(f"create index Index_Events_unix_time on Events(unix_time);")
+    # Note: As the number of events "in window" becomes large, it may become
+    # advantageous to add indices on other columns, depending on the queries
+    # performed by statistics and alerts.
     return db
 
 

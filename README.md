@@ -36,7 +36,7 @@ format.
 This git repository is an executable python package.  It may be invoked using a
 python3 interpreter, e.g.:
 ```console
-$ python3 logscan/ --help
+$ python3 ./ --help
 ```
 
 There is also a `make` file target, `./logscan` that produces an executable
@@ -53,7 +53,12 @@ the python standard `unittest` module.  There is a `make` phony target, `test`,
 that runs the tests, e.g.:
 ```console
 $ make test
-TODO
+python3 -m unittest
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.049s
+
+OK
 ```
 
 ### Hacking
@@ -62,6 +67,20 @@ See the other `README.md` files within the respository.
 - [statistics](statistics/README.md)
 - [alerts](alerts/README.md)
 - [data](data/README.md)
+
+### Performance Profiling
+There is a `make` phony target, `profile`, that using the python standard
+`cProfile` module to instrument a run of logscan using the `data/access.log`
+as input.  The binary-formatted result of the profile is written to
+`profile.out`, and then `snakeviz` is used to generate a report and display it
+in a web browser, e.g.:
+```console
+$ make profile
+python3 -m cProfile -o profile.out __main__.py data/access.log >/dev/null
+bin/visualize-profile profile.out
+snakeviz web server started on 127.0.0.1:8080; enter Ctrl-C to exit
+http://127.0.0.1:8080/snakeviz/%2Fhome%2Fdavid%2Fsrc%2Flogscan%2Fprofile.out
+```
 
 ### Thoughts on the Design
 See [NOTES.md](NOTES.md).
